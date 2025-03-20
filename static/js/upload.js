@@ -1,80 +1,88 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const uploadForm = document.getElementById('uploadForm');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const uploadProgress = document.getElementById('uploadProgress');
-    const progressBar = uploadProgress.querySelector('.progress-bar');
+    const form = document.getElementById('upload-form');
     const fileInput = document.getElementById('file');
+    const progressContainer = document.getElementById('upload-progress-container');
+    const progressBar = document.getElementById('upload-progress');
     
-    // Check file size before upload
-    fileInput.addEventListener('change', function() {
-        if (this.files.length > 0) {
-            const fileSize = this.files[0].size;
-            // 16MB in bytes
-            const maxSize = 16 * 1024 * 1024;
-            
-            if (fileSize > maxSize) {
-                alert('File size exceeds 16MB limit. Please select a smaller file.');
-                this.value = ''; // Clear the input
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Only intercept if there's a file selected
+            if (fileInput.files.length > 0) {
+                e.preventDefault();
+                uploadFile();
             }
-        }
-    });
+        });
+    }
     
-    // Handle form submission with progress tracking
-    uploadForm.addEventListener('submit', function(e) {
-        // Only intercept if there's a file selected
-        if (fileInput.files.length > 0) {
-            e.preventDefault();
-            
-            // Create FormData object
-            const formData = new FormData(uploadForm);
-            
-            // Create and configure XMLHttpRequest
-            const xhr = new XMLHttpRequest();
-            
-            // Show progress bar and disable submit button
-            uploadProgress.classList.remove('d-none');
-            uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading...';
-            
-            // Track upload progress
-            xhr.upload.addEventListener('progress', function(event) {
-                if (event.lengthComputable) {
-                    const percentComplete = Math.round((event.loaded / event.total) * 100);
-                    progressBar.style.width = percentComplete + '%';
-                    progressBar.setAttribute('aria-valuenow', percentComplete);
-                    progressBar.textContent = percentComplete + '%';
-                }
-            });
-            
-            // Handle response
-            xhr.addEventListener('load', function() {
-                if (xhr.status === 200) {
-                    // Redirect to the response URL (which should be the gallery page)
-                    window.location = xhr.responseURL;
-                } else {
-                    // If we get an error response
-                    alert('Upload failed. Please try again.');
-                    
-                    // Reset form state
-                    uploadProgress.classList.add('d-none');
-                    uploadBtn.disabled = false;
-                    uploadBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Upload';
-                }
-            });
-            
-            // Handle network errors
-            xhr.addEventListener('error', function() {
-                alert('A network error occurred. Please try again.');
+    // Handle file upload with progress tracking
+    function uploadFile() {
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // Create and configure the AJAX request
+        const xhr = new XMLHttpRequest();
+        
+        // Setup progress event
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
                 
-                // Reset form state
-                uploadProgress.classList.add('d-none');
-                uploadBtn.disabled = false;
-                uploadBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Upload';
-            });
-            
-            // Open and send the request
-            xhr.open('POST', uploadForm.action, true);
-            xhr.send(formData);
-        }
-    });
+                // Update progress bar
+                progressContainer.classList.remove('d-none');
+                progressBar.style.width = percentComplete + '%';
+                progressBar.setAttribute('aria-valuenow', percentComplete);
+                progressBar.textContent = percentComplete + '%';
+                
+                // Change color based on progress
+                if (percentComplete < 25) {
+                    progressBar.classList.remove('bg-success', 'bg-info', 'bg-warning');
+                } else if (percentComplete < 50) {
+                    progressBar.classList.remove('bg-success', 'bg-warning');
+                    progressBar.classList.add('bg-info');
+                } else if (percentComplete < 75) {
+                    progressBar.classList.remove('bg-success', 'bg-info');
+                    progressBar.classList.add('bg-warning');
+                } else {
+                    progressBar.classList.remove('bg-info', 'bg-warning');
+                    progressBar.classList.add('bg-success');
+                }
+            }
+        });
+        
+        // Setup completion handler
+        xhr.addEventListener('load', function() {
+            if (xhr.status === 200) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.redirect) {
+                        window.location.href = response.redirect;
+                    }
+                } catch (e) {
+                    // If not JSON, it's probably the full HTML page
+                    window.location.href = '/gallery';
+                }
+            } else {
+                alert('Upload failed. Please try again.');
+                progressContainer.classList.add('d-none');
+            }
+        });
+        
+        // Setup error handler
+        xhr.addEventListener('error', function() {
+            alert('Upload failed. Please try again.');
+            progressContainer.classList.add('d-none');
+        });
+        
+        // Setup abort handler
+        xhr.addEventListener('abort', function() {
+            alert('Upload aborted.');
+            progressContainer.classList.add('d-none');
+        });
+        
+        // Send the request
+        xhr.open('POST', form.action, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.send(formData);
+    }
 });

@@ -1,60 +1,54 @@
-{% extends 'layout.html' %}
+{% extends "layout.html" %}
+
+{% block title %}Upload Media - Media Gallery{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h2 class="mb-0"><i class="fas fa-cloud-upload-alt me-2"></i>Upload Media Files</h2>
+            <div class="card-header bg-dark">
+                <h2 class="card-title mb-0">
+                    <i class="fas fa-upload me-2"></i>Upload Media Files
+                </h2>
             </div>
             <div class="card-body">
-                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" id="uploadForm">
-                    <div class="mb-4">
-                        <label for="file" class="form-label">Select a file to upload:</label>
-                        <div class="input-group">
-                            <input type="file" class="form-control" id="file" name="file" accept=".png,.jpg,.jpeg,.gif,.mp4,.mov,.avi,.webm" required>
-                            <button type="submit" class="btn btn-primary" id="uploadBtn">
-                                <i class="fas fa-upload me-2"></i>Upload
-                            </button>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Supported formats:</strong>
+                    <ul class="mb-0">
+                        <li>Images: PNG, JPG, JPEG, GIF</li>
+                        <li>Videos: MP4, WebM, OGG</li>
+                    </ul>
+                    <p class="mb-0 mt-2">Maximum file size: 50MB</p>
+                </div>
+
+                <form id="upload-form" action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" class="mt-4">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Select file</label>
+                        <input class="form-control" type="file" id="file" name="file" required>
+                        <div class="form-text">Choose an image or video file to upload</div>
+                    </div>
+                    
+                    <div id="upload-progress-container" class="mb-3 d-none">
+                        <label class="form-label">Upload Progress</label>
+                        <div class="progress" style="height: 25px;">
+                            <div id="upload-progress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+                                0%
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="alert alert-info">
-                        <h5><i class="fas fa-info-circle me-2"></i>Supported File Types:</h5>
-                        <div class="row mt-3">
-                            <div class="col-md-6">
-                                <h6><i class="fas fa-image me-2"></i>Images</h6>
-                                <ul>
-                                    <li>PNG (.png)</li>
-                                    <li>JPEG (.jpg, .jpeg)</li>
-                                    <li>GIF (.gif)</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <h6><i class="fas fa-video me-2"></i>Videos</h6>
-                                <ul>
-                                    <li>MP4 (.mp4)</li>
-                                    <li>MOV (.mov)</li>
-                                    <li>AVI (.avi)</li>
-                                    <li>WebM (.webm)</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <p class="mb-0 mt-2"><strong>Maximum file size:</strong> 16MB</p>
-                    </div>
-                    
-                    <!-- Progress bar (hidden by default) -->
-                    <div class="progress mb-3 d-none" id="uploadProgress">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>Upload
+                        </button>
+                        <a href="{{ url_for('gallery') }}" class="btn btn-secondary">
+                            <i class="fas fa-images me-2"></i>View Gallery
+                        </a>
                     </div>
                 </form>
             </div>
-        </div>
-        
-        <div class="d-flex justify-content-center mt-4">
-            <a href="{{ url_for('gallery') }}" class="btn btn-outline-primary">
-                <i class="fas fa-images me-2"></i>View Gallery
-            </a>
         </div>
     </div>
 </div>

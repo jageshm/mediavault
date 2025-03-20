@@ -1,50 +1,67 @@
 import os
-import uuid
 from PIL import Image, UnidentifiedImageError
-import logging
+from app import app
 
-def allowed_file(filename, allowed_extensions):
-    """Check if the file extension is in the allowed extensions list"""
-    return '.' in filename and \
-        filename.rsplit('.', 1)[1].lower() in allowed_extensions
-
-def get_file_type(extension):
-    """Determine if the file is an image or video based on its extension"""
-    image_extensions = {'png', 'jpg', 'jpeg', 'gif'}
-    video_extensions = {'mp4', 'mov', 'avi', 'webm'}
-    
-    if extension in image_extensions:
-        return 'image'
-    elif extension in video_extensions:
-        return 'video'
-    return 'unknown'
-
-def generate_unique_filename(original_filename):
-    """Generate a unique filename for storage to prevent overwriting"""
-    extension = original_filename.rsplit('.', 1)[1].lower() if '.' in original_filename else ''
-    unique_id = uuid.uuid4().hex
-    return f"{unique_id}.{extension}"
-
-def generate_thumbnail(file_path, thumbnail_path, max_size=(200, 200)):
-    """Generate a thumbnail for an image file"""
-    try:
-        with Image.open(file_path) as img:
-            img.thumbnail(max_size)
-            img.save(thumbnail_path)
-            return True
-    except (UnidentifiedImageError, IOError, FileNotFoundError) as e:
-        logging.error(f"Error generating thumbnail: {e}")
+def allowed_file(filename):
+    """Check if the file extension is allowed"""
+    if '.' not in filename:
         return False
+    
+    extension = filename.rsplit('.', 1)[1].lower()
+    
+    # Check if extension is in any of the allowed categories
+    for media_type, extensions in app.config['ALLOWED_EXTENSIONS'].items():
+        if extension in extensions:
+            return True
+    
+    return False
 
-def get_default_thumbnail_for_video():
-    """Return the path to a default thumbnail for video files"""
-    # We'll use a font awesome icon in the template instead
+def get_media_type(filename):
+    """Determine the media type based on file extension"""
+    if '.' not in filename:
+        return None
+    
+    extension = filename.rsplit('.', 1)[1].lower()
+    
+    for media_type, extensions in app.config['ALLOWED_EXTENSIONS'].items():
+        if extension in extensions:
+            return media_type
+    
     return None
 
-def get_human_readable_size(size_in_bytes):
-    """Convert file size from bytes to a human-readable format"""
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if size_in_bytes < 1024.0:
-            return f"{size_in_bytes:.2f} {unit}"
-        size_in_bytes /= 1024.0
-    return f"{size_in_bytes:.2f} TB"
+def generate_thumbnail(source_path, destination_path, size=(200, 200)):
+    """Generate a thumbnail for an image file
+    
+    Args:
+        source_path: Path to the source image
+        destination_path: Path where the thumbnail should be saved
+        size: Thumbnail dimensions as a tuple (width, height)
+        
+    Returns:
+        Boolean indicating success or failure
+    """
+    try:
+        # Open the image
+        with Image.open(source_path) as img:
+            # Convert to RGB if necessary (e.g., for PNGs with transparency)
+            if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+                # Need to convert to RGBA first to preserve alpha during resize, then to RGB
+                img = img.convert('RGBA')
+                background = Image.new('RGBA', img.size, (255, 255, 255))
+                img = Image.alpha_composite(background, img).convert('RGB')
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Create a thumbnail
+            img.thumbnail(size, Image.LANCZOS)
+            
+            # Save the thumbnail
+            img.save(destination_path, format='JPEG', quality=85)
+            
+            return True
+    except (IOError, OSError, UnidentifiedImageError) as e:
+        app.logger.error(f"Error generating thumbnail: {e}")
+        return False
+    except Exception as e:
+        app.logger.error(f"Unexpected error generating thumbnail: {e}")
+        return False

@@ -1,5 +1,6 @@
 import os
 import logging
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
@@ -7,48 +8,44 @@ from sqlalchemy.orm import DeclarativeBase
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 
-# Create base class for SQLAlchemy models
 class Base(DeclarativeBase):
     pass
 
-# Initialize SQLAlchemy with the Base class
 db = SQLAlchemy(model_class=Base)
 
-# Create the Flask app
+# Create the app
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET")
+app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
 
-# Configure the database
+# Configure the database - always use PostgreSQL if DATABASE_URL is available
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
 }
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Configure upload folders
-UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
-THUMBNAIL_FOLDER = os.path.join(os.getcwd(), "uploads", "thumbnails")
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi', 'webm'}
-MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+# Configure upload settings
+app.config["UPLOAD_FOLDER"] = "static/uploads"
+app.config["THUMBNAIL_FOLDER"] = "static/thumbnails"
+app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50MB max upload size
+app.config["ALLOWED_EXTENSIONS"] = {
+    "image": {"png", "jpg", "jpeg", "gif"},
+    "video": {"mp4", "webm", "ogg"}
+}
 
-# Create upload folders if they don't exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(THUMBNAIL_FOLDER, exist_ok=True)
-
-# Add configuration to app
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['THUMBNAIL_FOLDER'] = THUMBNAIL_FOLDER
-app.config['ALLOWED_EXTENSIONS'] = ALLOWED_EXTENSIONS
-app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
-
-# Initialize the app with the extension
+# Initialize the app with SQLAlchemy
 db.init_app(app)
 
-# Import routes after app is created to avoid circular imports
+# Create upload directories if they don't exist
 with app.app_context():
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+    os.makedirs(app.config["THUMBNAIL_FOLDER"], exist_ok=True)
+    
     # Import models and create tables
     import models
     db.create_all()
     
-    # Import routes
-    import routes
+    # Import and register routes
+    from routes import *
+
