@@ -24,6 +24,7 @@
 
                 {% if current_user.is_authenticated %}
                 <form id="upload-form" action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" class="mt-4">
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
                         <label for="file" class="form-label">Select file</label>
                         <input class="form-control" type="file" id="file" name="file" required>
