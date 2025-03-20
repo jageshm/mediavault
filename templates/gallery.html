@@ -1,0 +1,122 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h1 class="mb-4"><i class="fas fa-images me-2"></i>Media Gallery</h1>
+
+<div class="d-flex justify-content-between mb-4">
+    <a href="{{ url_for('index') }}" class="btn btn-primary">
+        <i class="fas fa-upload me-2"></i>Upload New Media
+    </a>
+    
+    <div>
+        <span class="badge bg-secondary">
+            {{ files.total }} Total Files
+        </span>
+    </div>
+</div>
+
+{% if files.items %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
+        {% for file in files.items %}
+        <div class="col">
+            <div class="card h-100 shadow">
+                <div class="card-img-top gallery-thumbnail">
+                    {% if file.file_type == 'image' %}
+                        <a href="{{ url_for('view_file', file_id=file.id) }}">
+                            <img src="{{ url_for('thumbnail', filename=file.thumbnail_filename) }}" 
+                                alt="{{ file.original_filename }}" class="img-fluid">
+                        </a>
+                    {% elif file.file_type == 'video' %}
+                        <a href="{{ url_for('view_file', file_id=file.id) }}" class="video-thumbnail">
+                            <i class="fas fa-video"></i>
+                            <span>{{ file.original_filename }}</span>
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title text-truncate" title="{{ file.original_filename }}">
+                        {{ file.original_filename }}
+                    </h5>
+                    <p class="card-text small">
+                        <span class="badge bg-info">{{ file.file_type|capitalize }}</span>
+                        <span class="badge bg-secondary">{{ file.human_readable_size }}</span>
+                    </p>
+                </div>
+                <div class="card-footer d-flex justify-content-between">
+                    <small class="text-muted">
+                        <i class="far fa-calendar-alt me-1"></i>
+                        {{ file.upload_date.strftime('%b %d, %Y') }}
+                    </small>
+                    <div>
+                        <a href="{{ url_for('view_file', file_id=file.id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{{ url_for('download_file', file_id=file.id) }}" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-download"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if files.pages > 1 %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if files.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('gallery', page=files.prev_num) }}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <a class="page-link" href="#" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% endif %}
+            
+            {% for page_num in files.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if page_num %}
+                    {% if page_num == files.page %}
+                    <li class="page-item active">
+                        <a class="page-link" href="{{ url_for('gallery', page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('gallery', page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                    {% endif %}
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#">...</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if files.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('gallery', page=files.next_num) }}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <a class="page-link" href="#" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+{% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>No media files uploaded yet. 
+        <a href="{{ url_for('index') }}" class="alert-link">Upload your first file!</a>
+    </div>
+{% endif %}
+{% endblock %}

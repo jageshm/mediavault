@@ -1,0 +1,64 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('gallery') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Gallery
+    </a>
+</div>
+
+<div class="card shadow">
+    <div class="card-header">
+        <h2 class="mb-0">{{ file.original_filename }}</h2>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="media-container">
+                    {% if file.file_type == 'image' %}
+                        <img src="{{ url_for('uploaded_file', filename=file.filename) }}" alt="{{ file.original_filename }}" class="img-fluid rounded">
+                    {% elif file.file_type == 'video' %}
+                        <video controls class="img-fluid rounded">
+                            <source src="{{ url_for('uploaded_file', filename=file.filename) }}" type="{{ file.mimetype }}">
+                            Your browser does not support the video tag.
+                        </video>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card mt-3 mt-md-0">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>File Information</h5>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <strong>File Type:</strong> <span class="badge bg-info">{{ file.file_type|capitalize }}</span>
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Original Name:</strong> {{ file.original_filename }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Size:</strong> {{ file.human_readable_size }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Format:</strong> {{ file.file_extension.upper() }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>MIME Type:</strong> {{ file.mimetype }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Upload Date:</strong> {{ file.upload_date.strftime('%B %d, %Y %H:%M') }}
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('download_file', file_id=file.id) }}" class="btn btn-success w-100">
+                        <i class="fas fa-download me-2"></i>Download File
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
