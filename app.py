@@ -3,6 +3,7 @@ import logging
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
 from sqlalchemy.orm import DeclarativeBase
 
 # Set up logging
@@ -12,6 +13,10 @@ class Base(DeclarativeBase):
     pass
 
 db = SQLAlchemy(model_class=Base)
+login_manager = LoginManager()
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to upload media files.'
+login_manager.login_message_category = 'info'
 
 # Create the app
 app = Flask(__name__)
@@ -34,8 +39,14 @@ app.config["ALLOWED_EXTENSIONS"] = {
     "video": {"mp4", "webm", "ogg"}
 }
 
-# Initialize the app with SQLAlchemy
+# Initialize the app with SQLAlchemy and LoginManager
 db.init_app(app)
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    from models import User
+    return User.query.get(int(user_id))
 
 # Create upload directories if they don't exist
 with app.app_context():

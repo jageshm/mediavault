@@ -3,10 +3,12 @@ import uuid
 from datetime import datetime
 from flask import render_template, request, flash, redirect, url_for, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
+from flask_login import login_user, logout_user, login_required, current_user
 
 from app import app, db
-from models import MediaFile
+from models import MediaFile, User
 from utils import generate_thumbnail, allowed_file, get_media_type
+from forms import LoginForm, RegistrationForm
 
 # Add current date to all templates
 @app.context_processor
@@ -19,8 +21,9 @@ def index():
     return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
+@login_required
 def upload_file():
-    """Handle file uploads"""
+    """Handle file uploads (authenticated users only)"""
     # Check if the post request has the file part
     if 'file' not in request.files:
         flash('No file part', 'danger')
@@ -57,14 +60,15 @@ def upload_file():
             if not generate_thumbnail(file_path, thumbnail_path):
                 thumbnail_filename = None
         
-        # Create database entry
+        # Create database entry with the current user's ID
         media_file = MediaFile(
             filename=unique_filename,
             original_filename=original_filename,
             mime_type=file.content_type,
             file_size=file_size,
             media_type=media_type,
-            thumbnail_filename=thumbnail_filename
+            thumbnail_filename=thumbnail_filename,
+            user_id=current_user.id
         )
         
         db.session.add(media_file)
@@ -108,9 +112,15 @@ def download_file(file_id):
     )
 
 @app.route('/delete/<int:file_id>', methods=['POST'])
+@login_required
 def delete_file(file_id):
-    """Delete a specific file"""
+    """Delete a specific file (authenticated users only)"""
     media_file = MediaFile.query.get_or_404(file_id)
+    
+    # Check if the current user is the owner of the file
+    if media_file.user_id != current_user.id:
+        flash('You do not have permission to delete this file', 'danger')
+        return redirect(url_for('gallery'))
     
     # Delete the actual file
     try:
@@ -141,3 +151,53 @@ def request_entity_too_large(error):
 def page_not_found(error):
     """Handle 404 errors"""
     return render_template('404.html'), 404
+
+# Authentication routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """User login page"""
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user is None or not user.check_password(form.password.data):
+            flash('Invalid username or password', 'danger')
+            return redirect(url_for('login'))
+        
+        login_user(user, remember=form.remember_me.data)
+        next_page = request.args.get('next')
+        if not next_page or url_for('index') not in next_page:
+            next_page = url_for('index')
+        
+        flash('Login successful!', 'success')
+        return redirect(next_page)
+    
+    return render_template('login.html', form=form)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """User registration page"""
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(username=form.username.data, email=form.email.data)
+        user.set_password(form.password.data)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('Registration successful! You can now log in.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('register.html', form=form)
+
+@app.route('/logout')
+def logout():
+    """User logout"""
+    logout_user()
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('index'))

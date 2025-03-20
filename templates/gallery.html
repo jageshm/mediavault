@@ -64,12 +64,14 @@
                     <a href="{{ url_for('download_file', file_id=media.id) }}" class="btn btn-sm btn-success">
                         <i class="fas fa-download me-1"></i>Download
                     </a>
+                    {% if current_user.is_authenticated and media.user_id == current_user.id %}
                     <form action="{{ url_for('delete_file', file_id=media.id) }}" method="post" class="d-inline">
                         <button type="submit" class="btn btn-sm btn-danger" 
                                 onclick="return confirm('Are you sure you want to delete this file?')">
                             <i class="fas fa-trash me-1"></i>Delete
                         </button>
                     </form>
+                    {% endif %}
                 </div>
             </div>
         </div>
