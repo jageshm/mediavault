@@ -8,7 +8,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import app, db
 from models import MediaFile, User
 from utils import generate_thumbnail, allowed_file, get_media_type
-from forms import LoginForm, RegistrationForm
+from forms import LoginForm, RegistrationForm, UploadForm
 
 # Add current date to all templates
 @app.context_processor
@@ -18,74 +18,71 @@ def inject_now():
 @app.route('/')
 def index():
     """Main page with upload form"""
-    return render_template('index.html')
+    form = UploadForm()
+    return render_template('index.html', form=form)
 
 @app.route('/upload', methods=['POST'])
 @login_required
 def upload_file():
     """Handle file uploads (authenticated users only)"""
-    # Check if the post request has the file part
-    if 'file' not in request.files:
-        flash('No file part', 'danger')
-        return redirect(request.url)
+    form = UploadForm()
     
-    file = request.files['file']
+    if not form.validate_on_submit():
+        flash('No file selected or invalid file', 'danger')
+        return redirect(url_for('index'))
+        
+    file = form.file.data
     
-    # If user does not select file, browser submits an empty part
-    if file.filename == '':
-        flash('No selected file', 'danger')
-        return redirect(request.url)
-    
-    if file and allowed_file(file.filename):
-        # Create a secure filename with unique id to prevent collisions
-        original_filename = file.filename
-        extension = original_filename.rsplit('.', 1)[1].lower()
-        unique_filename = f"{uuid.uuid4().hex}.{extension}"
-        
-        # Determine media type
-        media_type = get_media_type(original_filename)
-        
-        # Save the file
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        file.save(file_path)
-        
-        # Get file size
-        file_size = os.path.getsize(file_path)
-        
-        # Generate thumbnail if it's an image
-        thumbnail_filename = None
-        if media_type == 'image':
-            thumbnail_filename = f"thumb_{unique_filename}"
-            thumbnail_path = os.path.join(app.config['THUMBNAIL_FOLDER'], thumbnail_filename)
-            if not generate_thumbnail(file_path, thumbnail_path):
-                thumbnail_filename = None
-        
-        # Create database entry with the current user's ID
-        media_file = MediaFile(
-            filename=unique_filename,
-            original_filename=original_filename,
-            mime_type=file.content_type,
-            file_size=file_size,
-            media_type=media_type,
-            thumbnail_filename=thumbnail_filename,
-            user_id=current_user.id
-        )
-        
-        db.session.add(media_file)
-        db.session.commit()
-        
-        # If this is an AJAX request, return JSON
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({
-                'success': True,
-                'redirect': url_for('gallery')
-            })
-        
-        flash('File successfully uploaded', 'success')
-        return redirect(url_for('gallery'))
-    else:
+    if not allowed_file(file.filename):
         flash('File type not allowed', 'danger')
         return redirect(url_for('index'))
+    
+    # Create a secure filename with unique id to prevent collisions
+    original_filename = file.filename
+    extension = original_filename.rsplit('.', 1)[1].lower()
+    unique_filename = f"{uuid.uuid4().hex}.{extension}"
+    
+    # Determine media type
+    media_type = get_media_type(original_filename)
+    
+    # Save the file
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+    file.save(file_path)
+    
+    # Get file size
+    file_size = os.path.getsize(file_path)
+    
+    # Generate thumbnail if it's an image
+    thumbnail_filename = None
+    if media_type == 'image':
+        thumbnail_filename = f"thumb_{unique_filename}"
+        thumbnail_path = os.path.join(app.config['THUMBNAIL_FOLDER'], thumbnail_filename)
+        if not generate_thumbnail(file_path, thumbnail_path):
+            thumbnail_filename = None
+    
+    # Create database entry with the current user's ID
+    media_file = MediaFile(
+        filename=unique_filename,
+        original_filename=original_filename,
+        mime_type=file.content_type,
+        file_size=file_size,
+        media_type=media_type,
+        thumbnail_filename=thumbnail_filename,
+        user_id=current_user.id
+    )
+    
+    db.session.add(media_file)
+    db.session.commit()
+    
+    # If this is an AJAX request, return JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': True,
+            'redirect': url_for('gallery')
+        })
+    
+    flash('File successfully uploaded', 'success')
+    return redirect(url_for('gallery'))
 
 @app.route('/gallery')
 def gallery():
